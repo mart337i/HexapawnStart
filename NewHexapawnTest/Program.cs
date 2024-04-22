@@ -11,8 +11,11 @@ namespace NewHexapawnTest
         {
             do
             {
+                // size of board 3x3 is default
                 int boardSize = 3;
                 var board = new Board(boardSize);
+
+                // current player either 'P' or 'C'
                 char player = 'P';
                 Move move;
 
@@ -80,6 +83,7 @@ namespace NewHexapawnTest
             }
         }
 
+        // IMPLEMENT THIS!!!
         private static Move AIMove()
         {
             throw new NotImplementedException();
