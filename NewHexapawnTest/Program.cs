@@ -7,6 +7,7 @@ namespace NewHexapawnTest
     class Program
     {
         static char emptyCell = '_';
+        private static Dictionary<int, Board> _lostBoards = new Dictionary<int, Board>();
         static void Main(string[] args)
         {
             do
@@ -24,13 +25,19 @@ namespace NewHexapawnTest
                     board.Print();
                     do
                     {
-                        move = GetInputForPlayer(player);
+                        move = GetInputForPlayer(player,board);
                     } while (board.IsValidMove(player, move) == false);
 
                     board.MakeMove(move);
+                    board.moves.Add(move);
 
                     // switch player
                     player = (player == 'P' ? 'C' : 'P');
+                }
+
+                if (board.Winner != player)
+                {
+                    _lostBoards.Add(board.version, board);
                 }
 
                 board.Print();
@@ -49,7 +56,7 @@ namespace NewHexapawnTest
             Console.ForegroundColor = oldColor;
         }
 
-        static Move GetInputForPlayer(char player)
+        static Move GetInputForPlayer(char player, Board board)
         {
             string fromPosition;
             string toPosition;
@@ -58,7 +65,7 @@ namespace NewHexapawnTest
 
             if (player == 'C')
             {
-                return AIMove();
+                return AiMove(board);
             }
             else
             {
@@ -84,18 +91,27 @@ namespace NewHexapawnTest
         }
 
         // IMPLEMENT THIS!!!
-        private static Move AIMove()
+        private static Move AiMove(Board board)
         {
-            throw new NotImplementedException();
+            List<Move> validMoves = board.GetValidMoves('C');
+            
+
+            Random random = new Random();
+            Move move = validMoves[random.Next(validMoves.Count)];
+            return move;
         }
 
         class Board
         {
+            public int version;
             private char[,] _cells;   // char [x,y]
             private int _boardSize;
             char? _winner = null;
+            public List<Move> moves = new List<Move>(); 
+            
             public Board(int boardSize)
             {
+                version += 1; 
                 _boardSize = boardSize;
                 _cells = new char[boardSize, boardSize];
 
