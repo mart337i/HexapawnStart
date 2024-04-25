@@ -7,14 +7,17 @@ namespace NewHexapawnTest
     class Program
     {
         static char emptyCell = '_';
-        private static Dictionary<int, Board> _lostBoards = new Dictionary<int, Board>();
+        private static Dictionary<string, List<Move>> _lostBoards = new();
+        private static int _boardVersion = 1;
+        private static Move prevuisMove;
+
         static void Main(string[] args)
         {
             do
             {
                 // size of board 3x3 is default
                 int boardSize = 3;
-                var board = new Board(boardSize);
+                var board = new Board(boardSize,_boardVersion);
 
                 // current player either 'P' or 'C'
                 char player = 'P';
@@ -29,16 +32,40 @@ namespace NewHexapawnTest
                     } while (board.IsValidMove(player, move) == false);
 
                     board.MakeMove(move);
-                    board.moves.Add(move);
+                    
+                    
 
                     // switch player
                     player = (player == 'P' ? 'C' : 'P');
                 }
 
-                if (board.Winner != player)
+                if (board.Winner != 'C')
                 {
-                    _lostBoards.Add(board.version, board);
+                    if (!_lostBoards.ContainsKey(board.BoardState))
+                    {
+                        _lostBoards.Add(board.BoardState, new List<Move>{prevuisMove});
+                    }
+                    else
+                    {
+                        _lostBoards[board.BoardState].Add(prevuisMove);
+                    }
                 }
+                
+                if (_lostBoards.Count > 0)
+                {
+                    Console.WriteLine("Failed Moves...");
+                    foreach (var failedMove in _lostBoards)
+                    {
+                        Console.WriteLine("Board State: " + failedMove.Key);
+                        for (int i = 0; i < failedMove.Value.Count; i++)
+                        {
+                            Console.WriteLine($"    {i+1}: " + failedMove.Value[i]);
+                        }
+                    }
+                }
+                
+
+
 
                 board.Print();
                 Console.WriteLine("Player {0} wins!", board.Winner);
@@ -80,13 +107,12 @@ namespace NewHexapawnTest
 
             Move textToMove(string fromPosition, string toPosition)
             {
-                Move move = new Move(0, 0, 0, 0);
-                move.FromRow = int.Parse(fromPosition[1].ToString()) - 1;
-                move.FromCol = fromPosition[0] - 'A';
-                move.ToRow = int.Parse(toPosition[1].ToString()) - 1;
-                move.ToCol = toPosition[0] - 'A';
-
-                return move;
+                    Move move = new Move(0, 0, 0, 0);
+                    move.FromRow = int.Parse(fromPosition[1].ToString()) - 1;
+                    move.FromCol = fromPosition[0] - 'A';
+                    move.ToRow = int.Parse(toPosition[1].ToString()) - 1;
+                    move.ToCol = toPosition[0] - 'A';
+                    return move;
             }
         }
 
@@ -94,24 +120,34 @@ namespace NewHexapawnTest
         private static Move AiMove(Board board)
         {
             List<Move> validMoves = board.GetValidMoves('C');
+            List<Move> allowedMoves = new List<Move>();
             
-
+            board.BoardState = board.GetBoardCode();
+            if (_lostBoards.ContainsKey(board.BoardState))
+            {
+                allowedMoves = validMoves.Except(_lostBoards[board.BoardState], new MoveEqualityComparer()).ToList();
+            }
+            else
+            {
+                allowedMoves = validMoves;
+            }
+            
             Random random = new Random();
-            Move move = validMoves[random.Next(validMoves.Count)];
+            Move move = allowedMoves[random.Next(allowedMoves.Count)];
+            prevuisMove = move;
             return move;
         }
 
         class Board
         {
-            public int version;
             private char[,] _cells;   // char [x,y]
             private int _boardSize;
             char? _winner = null;
-            public List<Move> moves = new List<Move>(); 
+            public Dictionary<int,Move> Moves = new();
+            public string BoardState = ""; 
             
-            public Board(int boardSize)
+            public Board(int boardSize, int version)
             {
-                version += 1; 
                 _boardSize = boardSize;
                 _cells = new char[boardSize, boardSize];
 
@@ -127,6 +163,18 @@ namespace NewHexapawnTest
                 }
 
                 _winner = null;
+            }
+
+            public string GetBoardCode()
+            {
+                string boardCode = "";
+
+                foreach (var cell in _cells)
+                {
+                    boardCode = string.Concat(boardCode, cell);
+                }
+
+                return boardCode;
             }
 
             public int BoardSize()
@@ -267,6 +315,19 @@ namespace NewHexapawnTest
             return String.Format("{0}{1}->{2}{3}", ColumnLabels[FromCol], FromRow + 1, ColumnLabels[ToCol], ToRow + 1);
         }
 
+    }
+    
+    class MoveEqualityComparer : IEqualityComparer<Move>
+    {
+        public bool Equals(Move? x, Move? y)
+        {
+            return x.ToString() == y.ToString();
+        }
+
+        public int GetHashCode(Move move)
+        {
+            return move.ToCol ^ move.FromCol ^ move.ToRow ^ move.FromRow;
+        }
     }
 
 }
